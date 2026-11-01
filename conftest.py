@@ -12,36 +12,18 @@ try:
 
     ALLURE_AVAILABLE = True
 except ImportError:
-    class _DummyAllure:
-        @staticmethod
-        def step(name):
-            class _DummyContext:
-                def __enter__(self):
-                    return self
+    class _DummyContext:
+        def __enter__(self):
+            return self
 
-                def __exit__(self, *args):
-                    pass
-
-            return _DummyContext()
-
-        @staticmethod
-        def attach(body=None, name=None, attachment_type=None):
+        def __exit__(self, *args):
             pass
 
-        @staticmethod
-        def title(name):
-            def decorator(func):
-                return func
-
-            return decorator
-
-        @staticmethod
-        def story(name):
-            def decorator(func):
-                return func
-
-            return decorator
-
+    class _DummyAllure:
+        step = staticmethod(lambda name: _DummyContext())
+        attach = staticmethod(lambda *a, **k: None)
+        title = staticmethod(lambda name: lambda func: func)
+        story = staticmethod(lambda name: lambda func: func)
 
     allure = _DummyAllure()
     ALLURE_AVAILABLE = False
@@ -54,17 +36,16 @@ def allure_api_tracker():
     Выполняет HTTP-запрос через requests, логирует его в Allure и прикрепляет ответ.
     Автоматически добавляет Bearer-токен в заголовки.
     """
-
     def _perform_request(method: str, url: str, api_key: str, **kwargs):
         # Копируем заголовки, чтобы избежать мутации входных данных
-        headers = kwargs.get('headers', {}).copy()
-        if 'Authorization' not in headers:
-            headers['Authorization'] = f"Bearer {api_key}"
-        kwargs['headers'] = headers
+        headers = kwargs.get("headers", {}).copy()
+        if "Authorization" not in headers:
+            headers["Authorization"] = f"Bearer {api_key}"
+        kwargs["headers"] = headers
 
         # Формируем название шага
         step_name = f"{method.upper()} {url}"
-        if 'json' in kwargs:
+        if "json" in kwargs:
             step_name += f" | Payload: {kwargs['json']}"
 
         with allure.step(step_name):
@@ -77,7 +58,7 @@ def allure_api_tracker():
                 allure.attach(
                     body=response.text,
                     name=f"Ответ [{status_label}] {response.status_code}",
-                    attachment_type=allure.attachment_type.TEXT
+                    attachment_type=allure.attachment_type.TEXT,
                 )
 
                 # Попытка прикрепить JSON
@@ -86,7 +67,7 @@ def allure_api_tracker():
                     allure.attach(
                         body=str(json_body),
                         name=f"Ответ JSON [{status_label}]",
-                        attachment_type=allure.attachment_type.JSON
+                        attachment_type=allure.attachment_type.JSON,
                     )
                 except ValueError:
                     pass  # Ответ не в формате JSON
@@ -100,8 +81,10 @@ def allure_api_tracker():
 @pytest.fixture(scope="session")
 def assert_status():
     def _assert(response, expected_code):
-        assert response.status_code == expected_code, \
-            f"Ожидался статус {expected_code}, получен {response.status_code}. Тело: {response.text}"
+        assert response.status_code == expected_code, (
+            f"Ожидался статус {expected_code}, получен {response.status_code}. "
+            f"Тело: {response.text}"
+        )
 
     return _assert
 
@@ -130,11 +113,12 @@ def api_key(allure_env_tracker):
             allure.attach(
                 body=f"Найдено значение: '{key}'",
                 name="Критическое значение API ключа",
-                attachment_type=allure.attachment_type.TEXT
+                attachment_type=allure.attachment_type.TEXT,
             )
         pytest.exit(
-            "КРИТИЧЕСКАЯ ОШИБКА: Переменная YOUGILE_API_KEY не задана или является заглушкой.",
-            returncode=255
+            "КРИТИЧЕСКАЯ ОШИБКА: Переменная YOUGILE_API_KEY не задана или "
+            "является заглушкой.",
+            returncode=255,
         )
     return key
 
@@ -154,6 +138,7 @@ def department_payload():
         return {
             "title": title or f"Автотест Отдел {uuid.uuid4()}",
             "parentId": None,
-            "users": {}
+            "users": {},
         }
+
     return _make
