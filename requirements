@@ -1,6 +1,5 @@
 requests
 selenium
 pytest
-pyyaml
 allure-pytest
 python-dotenv
